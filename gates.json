@@ -2,14 +2,13 @@
   "run": "pm-feishu-pipeline-test",
   "path": "D:\\workspace\\projects\\pm-feishu-pipeline-test",
   "pipeline_version": "3.0.0",
-  "validated_at": "2026-06-07T07:26:15.649839+00:00",
+  "validated_at": "2026-06-07T07:31:02.591960+00:00",
   "stages": {
-    "align": {
+    "research": {
       "pass": true,
       "checks": [
-        "glossary_terms>=7",
-        "no_tbd",
-        "context_exists"
+        "sources>=10",
+        "competitor_rows>=24"
       ],
       "notes": ""
     }
