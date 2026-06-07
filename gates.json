@@ -2,14 +2,13 @@
   "run": "pm-feishu-pipeline-test",
   "path": "D:\\workspace\\projects\\pm-feishu-pipeline-test",
   "pipeline_version": "3.0.0",
-  "validated_at": "2026-06-07T07:54:19.398420+00:00",
+  "validated_at": "2026-06-07T08:12:29.427000+00:00",
   "stages": {
-    "mvp": {
+    "retro": {
       "pass": true,
       "checks": [
-        "mvp_dir",
-        "readme",
-        "design_md=True"
+        "retro_exists",
+        "evolution_section"
       ],
       "notes": ""
     }
