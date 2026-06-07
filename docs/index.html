@@ -33,9 +33,9 @@
   <div class="meta">
     Repo: <a href="https://github.com/ttmens/pm-feishu-pipeline-test">https://github.com/ttmens/pm-feishu-pipeline-test</a> ·
     Pages: <a href="https://ttmens.github.io/pm-feishu-pipeline-test/">https://ttmens.github.io/pm-feishu-pipeline-test/</a><br/>
-    Commit: d92beae · Built: 2026-06-07 07:32 UTC
+    Commit: b8b5729 · Built: 2026-06-07 07:39 UTC
   </div>
-  <div class="badges"><span class="badge pass">research</span> <span class="badge overall pass">overall: pass</span></div>
+  <div class="badges"><span class="badge pass">analysis</span> <span class="badge overall pass">overall: pass</span></div>
 
   <div class="tabs" id="tabs">
     <button class="tab" data-tab="00-brief-md">Brief</button><button class="tab" data-tab="CONTEXT-md">Context</button><button class="tab" data-tab="decisions-md">Decisions</button><button class="tab" data-tab="01-research-md">Research</button><button class="tab" data-tab="02-analysis-md">Analysis</button><button class="tab" data-tab="03-prd-md">PRD</button><button class="tab" data-tab="05-retro-md">Retro</button>
@@ -151,6 +151,36 @@ This is an **end-to-end validation run** of the PM pipeline v3. The &quot;produc
 **Rationale:** This scope is sufficient to validate the full superpowers chain (plan → TDD → opencode → review → dogfood) while keeping build time and complexity minimal. The goal is pipeline validation, not product features.
 **Consequences:** The MVP will not demonstrate complex user flows or state management. Future real-product runs will need richer MVP scopes.
 **Date:** 2026-06-07
+
+## ADR-005: Standalone end-to-end pipeline over integration-first or wedge approaches
+
+**Status:** Accepted
+**Context:** Three strategic options were evaluated: (A) standalone end-to-end pipeline, (B) integration-first orchestration layer delegating to external tools, (C) wedge-first self-evolution loop. Analysis in `02-analysis.md`.
+**Decision:** Build pm-idea-to-mvp as a fully self-contained pipeline (Option A) that owns every stage from brief to retro, using Kanban-orchestrated specialist agents, OpenSpec for spec-driven development, and GitHub Pages for artifact publishing.
+**Rationale:** (1) No competitor covers all 7 stages with self-evolution — this is defensible whitespace. (2) ADR-001 commits to a full 7-stage validation; Options B and C would invalidate the test. (3) Self-evolution creates a compounding moat — each run improves the pipeline. (4) Open-source skills + free GitHub Pages costs far less than licensing 4-5 separate PM tools.
+**Consequences:** High build complexity — must be good at research, analysis, spec-writing, AND coding. Starting from zero user base. LLM quality ceiling constrains all stages.
+**Date:** 2026-06-07
+**Source:** `02-analysis.md` section 4 (Explicit Recommendation)
+
+## ADR-006: Gate-driven quality with configurable criteria per project
+
+**Status:** Accepted
+**Context:** The gate system could be rigid (fixed criteria for all projects) or flexible (configurable per project). Rigid gates ensure consistency but may block valid runs; flexible gates risk inconsistent quality.
+**Decision:** Gates are enforced with project-specific criteria defined in the gate validation script. Default criteria are strict (≥5 sources, ≥3 options, ≤5 stories) but can be overridden per project via gate configuration.
+**Rationale:** This test run (feishu-pipeline-test) uses strict defaults to validate the gate mechanism itself. Future real-product runs can relax criteria based on scope and risk tolerance. The gate system&#x27;s value is in its configurability, not in fixed thresholds.
+**Consequences:** Gate configuration adds operational overhead; operators must understand criteria trade-offs. Inconsistent criteria across projects could make cross-run comparison harder.
+**Date:** 2026-06-07
+**Source:** `02-analysis.md` section 5 (Key Risks and Mitigations)
+
+## ADR-007: LLM quality ceiling — confidence tags and source requirements as mitigation
+
+**Status:** Accepted
+**Context:** All pipeline stages depend on LLM reasoning, which means model limitations (hallucination, outdated knowledge, reasoning errors) become product limitations. Without mitigation, low-quality outputs could undermine trust in the entire pipeline.
+**Decision:** Every research claim must carry a confidence tag (HIGH/MEDIUM/LOW) with explicit rationale, and the research gate requires ≥5 source URLs. The analysis gate requires ≥3 options with explicit recommendation. These requirements force the LLM to ground its outputs in verifiable sources and structured reasoning.
+**Rationale:** Confidence tags make the LLM&#x27;s uncertainty visible to downstream stages and human reviewers. Source requirements prevent fabricated claims. Together, they create a quality floor even when LLM capabilities vary. This approach is informed by the research findings: 8 of 10 sources confirmed tool sprawl as the #1 PM pain point, giving us HIGH confidence in the problem statement.
+**Consequences:** Some stages may fail gates not because the analysis is wrong, but because the LLM didn&#x27;t produce enough structured evidence. Operators may need to re-run stages or provide additional context to meet gate criteria.
+**Date:** 2026-06-07
+**Source:** `02-analysis.md` section 6 (Testable Hypotheses) — H1, H3
 </pre></div><div class="panel" id="01-research-md"><pre class="md-source"># 01 — Research Report: PM Pipeline Automation &amp; AI Agent Tools
 
 **Project:** feishu-pipeline-test  
@@ -266,8 +296,238 @@ The pm-idea-to-mvp v3 pipeline&#x27;s retro→skill_patch→evolution loop is a 
 8. [LeewayHertz — AI in Product Management](https://www.leewayhertz.com/ai-in-product-management)
 9. [Aha.io — Competitor Research: Key Steps For PMs](https://www.aha.io/roadmapping/guide/product-strategy/how-should-product-managers-research-competitors)
 10. [ProductPlan — Conduct an Effective Competitive Analysis](https://www.productplan.com/learn/competitive-analysis-how-to)
-</pre></div><div class="panel" id="02-analysis-md"><p><em>Not generated yet.</em></p></div><div class="panel" id="03-prd-md"><p><em>Not generated yet.</em></p></div><div class="panel" id="05-retro-md"><p><em>Not generated yet.</em></p></div>
-  <div class="panel" id="openspec-panel"><p><em>OpenSpec not generated yet.</em></p></div>
+</pre></div><div class="panel" id="02-analysis-md"><pre class="md-source"># 02 — Analysis Report: PM Pipeline v3 Strategic Direction
+
+**Project:** feishu-pipeline-test
+**Stage:** Analysis (Stage 3)
+**Date:** 2026-06-07
+
+---
+
+## 1. Problem Statement
+
+Product managers spend 15+ hours per week across 5-8 disconnected tools (Jira, Notion, Slack, analytics, feedback platforms) to move an idea from conception to implementation. Each handoff between stages — research → analysis → spec → prototype → code — involves manual context transfer, document re-authoring, and alignment meetings. AI tools on the market (Productboard, ChatPRD, Builder.io) each solve one stage well, but no single platform orchestrates the full lifecycle with quality gates between stages. The result is a fragmented process where insights from research are lost during spec-writing, and specs drift during implementation.
+
+The PM Pipeline v3 must decide: **build a standalone end-to-end pipeline vs. integrate into existing PM toolchains vs. focus on a differentiating wedge.**
+
+---
+
+## 2. Options Matrix
+
+### Option A / 方案A: Standalone End-to-End Pipeline (Recommended)
+
+Build pm-idea-to-mvp as a fully self-contained pipeline that owns every stage from brief to retro, using Kanban-orchestrated specialist agents, OpenSpec for spec-driven development, and GitHub Pages for artifact publishing.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Full 7-stage pipeline, zero dependency on external PM tools |
+| **Build effort** | High — must build research, analysis, spec, MVP, retro capabilities from scratch |
+| **Time to value** | Medium (3-6 months for production-ready) |
+| **Differentiation** | Highest — no competitor covers all 7 stages with self-evolution |
+| **Risk** | High — competing against entrenched tools by doing everything well |
+| **Cost** | Low marginal cost per run (open-source skills, free GitHub Pages) |
+| **Fit for this test** | Exact match — this IS the validation run |
+
+### Option B / 方案B: Integration-First Pipeline
+
+Position pm-idea-to-mvp as an orchestration layer that delegates stages to best-in-class tools: Dovetail for research, ChatPRD for PRD drafting, Builder.io for prototyping, and the pipeline only handles coordination, gates, and the retro loop.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Orchestration + gate management; delegates 4-5 stages to external tools |
+| **Build effort** | Medium — API integrations, but less original capability building |
+| **Time to value** | Fast (1-3 months for MVP orchestration) |
+| **Differentiation** | Medium — orchestration is n8n/Activepieces&#x27; turf; gate-driven self-evolution is the differentiator |
+| **Risk** | Medium — vendor lock-in, API cost accumulation, integration fragility |
+| **Cost** | Medium-high — per-seat API costs ($20-$29/mo per tool × team size) |
+| **Fit for this test** | Poor — would require credentials and API keys not available |
+
+### Option C / 方案C: Wedge-First (Self-Evolution as the Hook)
+
+Build only the retro → skill_patch → evolution loop as the initial product, positioning it as a &quot;pipeline improvement engine&quot; that can sit on top of any existing PM workflow. Once users adopt the evolution loop, expand backward into earlier stages.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Retro + evolution only initially; expand to full pipeline over time |
+| **Build effort** | Low — focused scope, can be validated quickly |
+| **Time to value** | Fastest (2-4 weeks for retro MVP) |
+| **Differentiation** | High — zero competitors offer automated self-improvement |
+| **Risk** | High — retro without the upstream pipeline context may not produce meaningful patches |
+| **Cost** | Low — minimal infrastructure needed |
+| **Fit for this test** | Poor — ADR-001 commits to full 7-stage validation |
+
+### Option D / 方案D: AI-Augmented PM Copilot
+
+Build a single-agent assistant that PMs interact with conversationally (like ChatPRD but broader), which can trigger sub-skills for research, analysis, and spec-writing on demand. No gates, no orchestration — one agent, one conversation.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Single conversational agent with tool access |
+| **Build effort** | Medium — agent framework, tool definitions, prompt engineering |
+| **Time to value** | Medium (2-3 months) |
+| **Differentiation** | Low — crowded space (ChatPRD, Notion AI, Cursor, Copilot) |
+| **Risk** | Medium — hard to differentiate from existing AI assistants |
+| **Cost** | Medium — LLM API costs scale with usage |
+| **Fit for this test** | Poor — contradicts the multi-agent Kanban architecture |
+
+### Option E / 方案E: Open-Source Pipeline Framework (Platform Play)
+
+Publish the pm-idea-to-mvp pipeline as an open-source framework with pluggable stages. Users install via pip/npm, define their own stage configurations (YAML), and plug in custom skills. The framework provides the orchestration engine, gate system, and GitHub Pages reporting; users supply the domain-specific skills.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Framework + core stages; users plug in custom skills per domain |
+| **Build effort** | High — need plugin architecture, SDK, documentation, example pipelines |
+| **Time to value** | Slow (4-6 months for stable framework) |
+| **Differentiation** | Medium — open-source frameworks exist, but none with Kanban + gates + self-evolution |
+| **Risk** | High — requires community adoption to be valuable; framework without users is just code |
+| **Cost** | Low — open-source distribution; community contributes skills |
+| **Fit for this test** | Partial — this test run validates the core, but framework features need more runs |
+
+### Option F / 方案F: Enterprise SaaS Pipeline
+
+Build a hosted, multi-tenant SaaS version of the pipeline with a web UI, team collaboration, role-based access, audit logs, and SLA-backed execution. The pipeline logic is the same as Option A, but delivered as a managed service.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | Full pipeline + web UI + multi-tenancy + billing + support |
+| **Build effort** | Very high — infrastructure, auth, billing, monitoring, customer support |
+| **Time to value** | Slow (6-12 months to production SaaS) |
+| **Differentiation** | Medium — same pipeline logic as Option A, just packaged differently |
+| **Risk** | Very high — SaaS requires significant capital, customer acquisition, and uptime guarantees |
+| **Cost** | High — cloud infrastructure, support team, compliance |
+| **Fit for this test** | Poor — premature; validate the pipeline logic first (Option A), then consider SaaS packaging |
+
+### Option G / 方案G: VS Code / IDE Extension Pipeline
+
+Embed the pipeline directly into the developer&#x27;s IDE (VS Code, JetBrains) as an extension. PMs and engineers trigger stages from within their editor, see artifacts inline, and get real-time feedback. The pipeline runs locally or via a remote agent.
+
+| Dimension | Assessment |
+|---|---|
+| **Scope** | IDE extension + local/remote pipeline execution |
+| **Build effort** | Medium — IDE SDK, extension UI, local execution engine |
+| **Time to value** | Medium (2-4 months) |
+| **Differentiation** | Medium — IDE-native AI extensions exist (Copilot, Cursor), but none with gated PM pipelines |
+| **Risk** | Medium — IDE adoption is fragmented; PMs may not use the same IDE as engineers |
+| **Cost** | Low — extension distribution is free; LLM API costs per use |
+| **Fit for this test** | Poor — IDE extension requires UI development outside this pipeline&#x27;s scope |
+
+---
+
+## 3. SWOT Analysis — Option A (Standalone End-to-End Pipeline)
+
+### Strengths
+- **No competitor covers all 7 stages** — the research surveyed 8 tools; none span brief → retro
+- **Self-evolution loop is unique** — retro produces skill patches that improve future runs; zero competitors
+- **Open-source and free to run** — skills, gates, and pipeline logic are all open; only infra cost is LLM API calls
+- **Structured handoffs** — Kanban tasks with metadata ensure context survives between stages; no information loss
+- **GitHub Pages as single source of truth** — every run produces a browsable, shareable artifact index
+
+### Weaknesses
+- **High build complexity** — must be good at research, analysis, spec-writing, AND coding to be credible
+- **No existing user base** — starting from zero; no network effects or data advantage
+- **Rigid stage boundaries** — the gate system may feel bureaucratic for small teams that want flexibility
+- **LLM quality ceiling** — all stages depend on LLM reasoning; model limitations become product limitations
+
+### Opportunities
+- **Agentic AI trend** — Productboard reports 10+ hours/week reclaimable with agent orchestration; market is moving in our direction
+- **No-code/low-code movement** — PMs are building their own automations (n8n, Stackby); our pipeline is a pre-built automation
+- **Enterprise PM tool fatigue** — Productboard ($20/maker/mo), Dovetail ($29/mo), Notion AI ($10/mo + AI) add up to $50+/mo; our pipeline costs a fraction
+- **API-first PM tools** — most competitors have APIs; future integration is possible without changing core architecture
+
+### Threats
+- **Platform risk** — if major PM tools (Notion, Jira, Productboard) add AI agent orchestration, they could replicate our differentiation
+- **LLM commoditization** — as LLM APIs become cheaper and more capable, single-agent solutions may close the gap on multi-agent orchestration
+- **Adoption friction** — requires users to adopt a new workflow (Feishu → Kanban → Pages); switching costs from existing tools
+- **Quality bar** — one bad MVP or inaccurate research report undermines trust in the entire pipeline
+
+---
+
+## 4. Explicit Recommendation (推荐方案)
+
+**推荐：选择方案 A — 独立端到端流水线（Standalone End-to-End Pipeline）。**
+
+Rationale:
+1. **Alignment with ADR-001**: The pipeline has already committed to a full 7-stage validation run. Option A is the only choice that validates the complete architecture.
+2. **Maximum whitespace**: Research confirms no competitor spans all 7 stages. This is a defensible position, not a feature chase.
+3. **Self-evolution as moat**: The retro → skill_patch loop creates a compounding advantage — each run makes the pipeline smarter. Competitors would need to replicate the entire pipeline, not just a feature.
+4. **Cost advantage**: Running on open-source skills + free GitHub Pages + LLM APIs is significantly cheaper than licensing 4-5 separate PM tools.
+5. **This test run IS the proof**: The feishu-pipeline-test project exists to validate exactly this approach. Building anything else would invalidate the test.
+
+---
+
+## 5. Key Risks and Mitigations
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| LLM produces low-quality research or analysis | Medium | High | Confidence tags on claims; gate validation requires ≥5 sources |
+| Gate system is too rigid for real teams | Medium | Medium | Gates are configurable per project; future runs can relax criteria |
+| GitHub Pages deploy latency blocks downstream stages | Low | Low | Pages deploy is async; pipeline gates check local artifacts, not Pages |
+| Kanban orchestration overhead exceeds value | Low | Medium | Keep specialist profiles lean; merge stages if handoff cost &gt; value |
+| Self-evolution produces harmful skill patches | Medium | High | Human approval required before skill patches are merged (CHANGELOG.md) |
+| Credential/push failures block stage completion | Medium | Low | Local commit succeeds even if push fails; artifacts are preserved |
+
+---
+
+## 6. Testable Hypotheses
+
+1. **H1 — Full pipeline produces higher-quality output than individual tools**: A pipeline run that completes all 7 stages will produce more actionable and coherent artifacts than using 3 separate tools (e.g., ChatPRD + Notion + Builder.io) for the same idea.
+   - *Measurement*: Compare artifact completeness scores and stakeholder satisfaction ratings.
+
+2. **H2 — Self-evolution improves pipeline quality over time**: Pipeline runs 5+ will produce fewer gate failures and higher-confidence research claims than runs 1-4, due to skill patches accumulated from retros.
+   - *Measurement*: Track gate failure rate and average confidence score across runs.
+
+3. **H3 — Kanban-orchestrated handoffs preserve context better than manual handoffs**: Downstream stages will reference ≥80% of upstream findings without requiring re-research.
+   - *Measurement*: Trace reference chains between stage artifacts (e.g., does the PRD cite specific research findings?).
+
+4. **H4 — GitHub Pages as the artifact index is sufficient for stakeholder review**: Stakeholders can understand the full pipeline run&#x27;s outcome by reviewing the Pages site alone, without accessing the git repo.
+   - *Measurement*: Survey stakeholders after presenting only the Pages site.
+
+5. **H5 — A single-page static dashboard (ADR-004) is sufficient to validate the MVP stage**: The builder stage&#x27;s superpowers chain will succeed with a simple dashboard scope; complexity is not required for pipeline validation.
+   - *Measurement*: Successful completion of the full superpowers chain (plan → TDD → opencode → review → dogfood) with the dashboard scope.
+</pre></div><div class="panel" id="03-prd-md"><p><em>Not generated yet.</em></p></div><div class="panel" id="05-retro-md"><p><em>Not generated yet.</em></p></div>
+  <div class="panel" id="openspec-panel"><h3>openspec/proposal.md</h3><pre class="md-source"># Proposal: Standalone End-to-End PM Pipeline v3
+
+## Why
+
+Product managers spend 15+ hours/week across 5-8 disconnected tools moving an idea from conception to implementation. AI tools on the market (Productboard, ChatPRD, Builder.io, Dovetail) each solve one stage well, but **no single platform orchestrates the full lifecycle with quality gates between stages**. Context is lost at every handoff: research insights don&#x27;t inform specs, specs drift during implementation, and lessons from completed projects aren&#x27;t captured systematically.
+
+The PM Pipeline v3 addresses this by providing a fully automated, 7-stage gated workflow (brief → align → research → analysis → spec → MVP → retro) where each stage is executed by a specialist AI agent, with structured handoffs and validation gates ensuring quality at every step.
+
+## What changes
+
+The pipeline introduces five capabilities that do not exist in any single competitor:
+
+1. **Full-stage automation** — Idea to MVP in one automated pipeline, with no manual handoffs between stages. Each stage reads the previous stage&#x27;s artifacts and produces structured output for the next.
+
+2. **Kanban-orchestrated specialist agents** — Each stage is a separate Kanban task assigned to a specialist profile (pm-aligner, pm-researcher, pm-analyst, pm-planner, pm-builder), with parent-child dependencies forming a DAG. Tasks auto-promote when parents complete.
+
+3. **Gate-driven quality control** — Every stage must pass a validation gate (enforced by `validate-gates.py`) before the next stage can begin. Gate failures block promotion and notify the operator via Feishu.
+
+4. **OpenSpec integration** — Structured spec-driven development: the analyst drafts a proposal, the planner writes delta specs and task checklists, and the builder implements against tasks.md. Requirements are version-controlled in-repo.
+
+5. **Self-evolution loop** — The retro stage produces skill patch proposals that improve the pipeline&#x27;s own skills, knowledge docs, and feedback tracking. Each run makes the next run better.
+
+## Impact
+
+| Metric | Current state (manual PM workflow) | With PM Pipeline v3 |
+|---|---|---|
+| Time from idea to MVP artifact | Days to weeks | Hours (pipeline runtime) |
+| Context loss between stages | High (manual re-authoring) | Low (structured handoffs) |
+| Quality consistency | Variable (depends on individual PM) | Consistent (gate-enforced) |
+| Process improvement | Ad hoc (retros rarely happen) | Automatic (every run produces patches) |
+| Tool licensing cost | $50+/mo per user (4-5 tools) | LLM API costs only |
+
+## Acceptance scenarios
+
+1. **End-to-end run**: A Feishu user types `/goal 产品想法：{描述}`. Within one pipeline execution, all 7 stages complete, gates pass, and a GitHub Pages site is published showing the full run report.
+
+2. **Gate enforcement**: If the research stage produces fewer than 5 source URLs, the gate fails, the analysis task does not promote, and the operator receives a Feishu notification with the specific failure reason.
+
+3. **Self-evolution**: After a pipeline run completes, the retro stage produces at least one `skill_patch_proposal` that, when approved and merged, improves a pipeline skill&#x27;s instructions, pitfalls, or verification steps.
+
+4. **Artifact traceability**: Every stage&#x27;s output can be traced back to specific inputs from prior stages. The PRD cites research findings; the MVP implements against OpenSpec tasks; the retro references gate results.
+</pre></div>
   <div class="panel" id="mvp-panel"><p><em>MVP not built yet.</em></p></div>
   <div class="panel" id="proto-panel"><p><em>No static prototype (02b-prototype/index.html) yet.</em></p></div>
 
