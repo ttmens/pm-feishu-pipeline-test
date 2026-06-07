@@ -2,15 +2,13 @@
   "run": "pm-feishu-pipeline-test",
   "path": "D:\\workspace\\projects\\pm-feishu-pipeline-test",
   "pipeline_version": "3.0.0",
-  "validated_at": "2026-06-07T07:39:13.131503+00:00",
+  "validated_at": "2026-06-07T07:45:32.925161+00:00",
   "stages": {
-    "analysis": {
+    "prototype": {
       "pass": true,
       "checks": [
-        "options>=9",
-        "has_recommendation",
-        "adrs>=8",
-        "openspec_proposal=True"
+        "index_html",
+        "design_md"
       ],
       "notes": ""
     }

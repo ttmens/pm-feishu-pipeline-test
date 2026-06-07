@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM Pipeline Dashboard — feishu-pipeline-test</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text-primary: #1a1a2e;
+    --text-secondary: #6c757d;
+    --accent: #4361ee;
+    --success: #2ec4b6;
+    --warning: #ff9f1c;
+    --danger: #e63946;
+    --border: #e9ecef;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .container { max-width: 800px; margin: 0 auto; padding: 16px; }
+
+  /* Header */
+  .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header .slug { font-size: 13px; color: var(--text-secondary); background: var(--border); padding: 2px 8px; border-radius: 4px; }
+  .back-btn { display: none; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; font-size: 13px; color: var(--accent); cursor: pointer; }
+  .back-btn:hover { background: var(--accent); color: #fff; }
+
+  /* Status overview */
+  .run-status {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .run-status h2 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .run-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-secondary); }
+  .run-meta span { display: flex; align-items: center; gap: 4px; }
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--success); border-radius: 3px; transition: width 0.3s; }
+
+  /* Stage cards */
+  .stage-list { display: flex; flex-direction: column; gap: 8px; }
+  .stage-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+  .stage-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .stage-card.done { border-left-color: var(--success); }
+  .stage-card.fail { border-left-color: var(--danger); }
+  .stage-card.running { border-left-color: var(--warning); }
+  .stage-card.pending { border-left-color: var(--border); opacity: 0.6; }
+  .stage-header { display: flex; align-items: center; justify-content: space-between; }
+  .stage-name { font-weight: 600; font-size: 14px; }
+  .stage-badges { display: flex; gap: 6px; align-items: center; }
+  .badge {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 10px; color: #fff;
+  }
+  .badge.done { background: var(--success); }
+  .badge.fail { background: var(--danger); }
+  .badge.running { background: var(--warning); }
+  .badge.pending { background: var(--border); color: var(--text-secondary); }
+  .badge.pass { background: var(--success); }
+  .stage-time { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* Screen: Stage Detail */
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .detail-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .detail-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .detail-card p { font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+  .gate-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .gate-table th { text-align: left; padding: 6px 0; border-bottom: 2px solid var(--border); font-weight: 600; }
+  .gate-table td { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .gate-table .check { color: var(--success); }
+  .gate-table .cross { color: var(--danger); }
+
+  .artifact-links { list-style: none; }
+  .artifact-links li { margin-bottom: 6px; }
+  .artifact-links a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .artifact-links a:hover { text-decoration: underline; }
+  .artifact-links a::before { content: "📄"; font-size: 12px; }
+
+  /* Screen: Prototype Embed */
+  .prototype-frame {
+    width: 100%;
+    height: 500px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .prototype-fallback {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  /* Links row */
+  .ext-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .ext-links a {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .ext-links a:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .container { padding: 12px; }
+    .header h1 { font-size: 16px; }
+    .stage-card { padding: 10px 12px; }
+    .prototype-frame { height: 350px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN 1: Dashboard Overview ===== -->
+<div id="screen-dashboard" class="screen active">
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>PM Pipeline Run</h1>
+        <span class="slug">feishu-pipeline-test</span>
+      </div>
+      <span class="badge done">Complete</span>
+    </div>
+
+    <div class="run-status">
+      <h2>Run Overview</h2>
+      <div class="run-meta">
+        <span>7 / 7 stages done</span>
+        <span>Gates: 5 / 5 passed</span>
+        <span>2026-06-07</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+    </div>
+
+    <div class="stage-list">
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 0)">
+        <div class="stage-header">
+          <span class="stage-name">0 Brief</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 13:42</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 1)">
+        <div class="stage-header">
+          <span class="stage-name">1 Align</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 14:05</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 2)">
+        <div class="stage-header">
+          <span class="stage-name">2 Research</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 14:38</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 3)">
+        <div class="stage-header">
+          <span class="stage-name">3 Analysis</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 15:35</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 4)">
+        <div class="stage-header">
+          <span class="stage-name">4 Spec</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 16:10</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 5)">
+        <div class="stage-header">
+          <span class="stage-name">5 MVP</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 16:45</div>
+      </div>
+      <div class="stage-card done" onclick="showScreen('screen-stage-detail', 6)">
+        <div class="stage-header">
+          <span class="stage-name">6 Retro</span>
+          <div class="stage-badges"><span class="badge done">Done</span><span class="badge pass">Gate ✓</span></div>
+        </div>
+        <div class="stage-time">Completed · 2026-06-07 17:02</div>
+      </div>
+    </div>
+
+    <div class="ext-links">
+      <a href="https://ttmens.github.io/pm-pipeline-index/" target="_blank">Pipeline Index</a>
+      <a href="https://github.com/ttmens/pm-feishu-pipeline-test" target="_blank">GitHub Repo</a>
+      <a href="#" onclick="showScreen('screen-prototype'); return false;">Prototype Preview</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: Stage Detail ===== -->
+<div id="screen-stage-detail" class="screen">
+  <div class="container">
+    <div class="header">
+      <button class="back-btn" style="display:inline-block" onclick="showScreen('screen-dashboard')">← Back</button>
+      <h1 id="detail-title">Stage Detail</h1>
+    </div>
+
+    <div class="detail-card">
+      <h2 id="detail-stage-name">—</h2>
+      <p id="detail-desc">—</p>
+      <table class="gate-table" id="detail-gate-table">
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody id="detail-gate-body"></tbody>
+      </table>
+    </div>
+
+    <div class="detail-card">
+      <h2>Artifacts</h2>
+      <ul class="artifact-links" id="detail-artifacts"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 3: Prototype Preview ===== -->
+<div id="screen-prototype" class="screen">
+  <div class="container">
+    <div class="header">
+      <button class="back-btn" style="display:inline-block" onclick="showScreen('screen-dashboard')">← Back</button>
+      <h1>Prototype Preview</h1>
+    </div>
+    <div class="detail-card">
+      <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">
+        Interactive prototype from the Spec stage. Click through screens to experience the proposed dashboard flow.
+      </p>
+      <!-- Self-hosted inline prototype: shows a mini version of the dashboard -->
+      <div id="mini-prototype" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#f0f2f5;">
+        <div style="background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:600;font-size:14px;">Pipeline MVP</span>
+          <span style="font-size:12px;opacity:0.8;">feishu-pipeline-test</span>
+        </div>
+        <div style="padding:16px;">
+          <div style="background:#fff;border-radius:6px;padding:12px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="font-size:14px;">Run Status</strong>
+              <span style="background:#2ec4b6;color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;">COMPLETE</span>
+            </div>
+            <div style="height:4px;background:#e9ecef;border-radius:2px;margin-top:8px;"><div style="height:100%;width:100%;background:#2ec4b6;border-radius:2px;"></div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Brief</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Align</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Research</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Analysis</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Spec</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #4361ee;display:flex;justify-content:space-between;font-size:13px;box-shadow:0 0 0 1px #4361ee33;">
+              <span style="color:#4361ee;font-weight:600;">MVP ← You are here</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+            <div style="background:#fff;border-radius:4px;padding:8px 12px;border-left:3px solid #2ec4b6;display:flex;justify-content:space-between;font-size:13px;">
+              <span>Retro</span><span style="color:#2ec4b6;">✓ Pass</span>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:6px;">
+            <a href="https://github.com/ttmens/pm-feishu-pipeline-test" target="_blank" style="flex:1;text-align:center;background:#4361ee;color:#fff;text-decoration:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;">GitHub</a>
+            <a href="https://ttmens.github.io/pm-pipeline-index/" target="_blank" style="flex:1;text-align:center;background:#fff;color:#4361ee;border:1px solid #4361ee;text-decoration:none;padding:8px;border-radius:6px;font-size:13px;font-weight:600;">Index</a>
+          </div>
+        </div>
+      </div>
+      <div class="prototype-fallback" style="margin-top:12px;">
+        <p>This is the MVP dashboard — the final deliverable of the PM Pipeline v3.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const stageData = [
+  { name: "0 Brief", desc: "Capture the initial product idea from Feishu /goal command. Defines the product concept, target users, and success criteria.", gates: [["Idea captured","pass"],["No TBD fields","pass"]], artifacts: [["00-brief.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/00-brief.md"]] },
+  { name: "1 Align", desc: "Clarify the idea through structured questioning. Produces CONTEXT.md with glossary and explicit decisions.", gates: [["No TBD fields","pass"],["Glossary ≥ 3 terms","pass"]], artifacts: [["CONTEXT.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/CONTEXT.md"],["decisions.md (ADR-001~004)","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/decisions.md"]] },
+  { name: "2 Research", desc: "Deep-dive into market landscape: competitors, pricing, positioning, and feature comparison.", gates: [["≥ 5 source URLs","pass"],["Competitor table","pass"]], artifacts: [["01-research.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/01-research.md"]] },
+  { name: "3 Analysis", desc: "Evaluate strategic options with SWOT analysis. Recommends standalone end-to-end pipeline (Option A).", gates: [["≥ 3 options","pass"],["Recommendation explicit","pass"],["≥ 1 ADR","pass"],["Proposal draft","pass"],["Risks identified","pass"]], artifacts: [["02-analysis.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/02-analysis.md"],["openspec/proposal.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/openspec/proposal.md"],["decisions.md (ADR-005~007)","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/decisions.md"]] },
+  { name: "4 Spec", desc: "Define PRD with user stories, create clickable prototype, write OpenSpec delta specs and task checklist.", gates: [["≤ 5 user stories","pass"],["Prototype exists","pass"],["tasks.md exists","pass"]], artifacts: [["03-prd.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/03-prd.md"],["02b-prototype/index.html","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/02b-prototype/index.html"],["openspec/tasks.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/openspec/tasks.md"],["openspec/design.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/openspec/design.md"]] },
+  { name: "5 MVP", desc: "Build the working single-page dashboard via the Superpowers chain: plan → TDD → opencode → review → dogfood.", gates: [["README exists","pass"],["Smoke test passes","pass"],["DESIGN.md tokens applied","pass"]], artifacts: [["04-mvp/README.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/04-mvp/README.md"],["04-mvp/index.html","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/04-mvp/index.html"],["04-mvp/DESIGN.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/04-mvp/DESIGN.md"]] },
+  { name: "6 Retro", desc: "Review the full pipeline run: timing, gate hits/misses, skill patches, and evolution notes for future runs.", gates: [["Retro written","pass"],["Evolution section","pass"]], artifacts: [["05-retro.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/05-retro.md"],["evolution-notes.md","https://github.com/ttmens/pm-feishu-pipeline-test/blob/main/evolution-notes.md"]] }
+];
+
+function showScreen(id, stageIdx) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (stageIdx !== undefined) {
+    const s = stageData[stageIdx];
+    document.getElementById('detail-title').textContent = s.name;
+    document.getElementById('detail-stage-name').textContent = s.name;
+    document.getElementById('detail-desc').textContent = s.desc;
+    const tbody = document.getElementById('detail-gate-body');
+    tbody.innerHTML = '';
+    s.gates.forEach(([check, result]) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${check}</td><td class="${result === 'pass' ? 'check' : 'cross'}">${result === 'pass' ? '✓ Pass' : '✗ Fail'}</td>`;
+      tbody.appendChild(tr);
+    });
+    const artifacts = document.getElementById('detail-artifacts');
+    artifacts.innerHTML = '';
+    s.artifacts.forEach(([name, url]) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="${url}" target="_blank">${name}</a>`;
+      artifacts.appendChild(li);
+    });
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
